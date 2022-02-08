@@ -146,6 +146,10 @@ include user/Makefrag
 
 
 ## We need KVM for qemu to export VMX
+ lab2
+#QEMUOPTS = -cpu qemu64,+vmx -enable-kvm -m 256 -drive format=raw,file=$(OBJDIR)/kern/kernel.img -serial mon:stdio -gdb tcp::$(GDBPORT)
+
+ main
 QEMUOPTS = -cpu qemu64 -m 256 -drive format=raw,file=$(OBJDIR)/kern/kernel.img -serial mon:stdio -gdb tcp::$(GDBPORT)
 QEMUOPTS += $(shell if $(QEMU) -nographic -help | grep -q '^-D '; then echo '-D qemu.log'; fi)
 IMAGES = $(OBJDIR)/kern/kernel.img
