@@ -10,7 +10,7 @@
 #include <kern/syscall.h>
 
 extern uintptr_t gdtdesc_64;
-struct Taskstate ts;
+static struct Taskstate ts;
 extern struct Segdesc gdt[];
 extern long gdt_pd;
 
@@ -66,8 +66,42 @@ trap_init(void)
 	extern struct Segdesc gdt[];
 
 	// LAB 3: Your code here.
-	idt_pd.pd_lim = sizeof(idt)-1;
-	idt_pd.pd_base = (uint64_t)idt;
+extern void DIVIDE();
+extern void DEBUG();
+extern void NMI();
+extern void BRKPT();
+extern void OFLOW();
+extern void BOUND();
+extern void ILLOP();
+extern void DEVICE();
+extern void DBLFLT();
+extern void TSS();
+extern void SEGNP();
+extern void STACK();
+extern void GPFLT();
+extern void PGFLT();
+extern void SYSCALL();
+  
+SETGATE(idt[T_DIVIDE],0,GD_KT,DIVIDE,0);
+SETGATE(idt[T_DEBUG],0,GD_KT,DEBUG,0);
+SETGATE(idt[T_NMI],0,GD_KT,NMI,0);
+SETGATE(idt[T_BRKPT],0,GD_KT,BRKPT,3);
+SETGATE(idt[T_OFLOW],0,GD_KT,OFLOW,0);
+SETGATE(idt[T_BOUND],0,GD_KT,BOUND,0);
+SETGATE(idt[T_ILLOP],0,GD_KT,ILLOP,0);
+SETGATE(idt[T_DEVICE],0,GD_KT,DEVICE,0);
+SETGATE(idt[T_DBLFLT],0,GD_KT,DBLFLT,0);
+SETGATE(idt[T_TSS],0,GD_KT,TSS,0);
+SETGATE(idt[T_SEGNP],0,GD_KT,SEGNP,0);
+SETGATE(idt[T_STACK],0,GD_KT,DIVIDE,0);
+SETGATE(idt[T_GPFLT],0,GD_KT,GPFLT,0);
+SETGATE(idt[T_PGFLT],0,GD_KT,PGFLT,0);
+SETGATE(idt[T_SYSCALL],0,GD_KT,SYSCALL,3);
+
+
+idt_pd.pd_lim = sizeof(idt)-1;
+idt_pd.pd_base = (uint64_t)idt;
+
 	// Per-CPU setup
 	trap_init_percpu();
 }
@@ -76,10 +110,9 @@ trap_init(void)
 void
 trap_init_percpu(void)
 {
-
 	// Setup a TSS so that we get the right stack
-	// when we trap to the kernel.
-	ts.ts_esp0 = KSTACKTOP;
+	// when we trap to the kernel.  
+        ts.ts_esp0 = KSTACKTOP;
 
 	// Initialize the TSS slot of the gdt.
 	SETTSS((struct SystemSegdesc64 *)((gdt_pd>>16)+40),STS_T64A, (uint64_t) (&ts),sizeof(struct Taskstate), 0);
@@ -150,10 +183,31 @@ trap_dispatch(struct Trapframe *tf)
 	// Handle processor exceptions.
 	// LAB 3: Your code here.
 
-	// Unexpected trap: The user process or the kernel has a bug.
+	switch(tf->tf_trapno)
+	{
+		case T_PGFLT:	page_fault_handler(tf);
+				return;
+
+		case T_BRKPT:	monitor(tf);
+
+
+				return;
+		case T_SYSCALL:	
+				tf->tf_regs.reg_rax = syscall(tf->tf_regs.reg_rax,
+				tf->tf_regs.reg_rdx,
+				tf->tf_regs.reg_rcx,
+				tf->tf_regs.reg_rbx, 
+				tf->tf_regs.reg_rdi, 
+				tf->tf_regs.reg_rsi);
+				return;
+	}
+	
+
 	print_trapframe(tf);
+
 	if (tf->tf_cs == GD_KT)
-		panic("unhandled trap in kernel");
+
+		panic("couldnt handle trap in kern");
 	else {
 		env_destroy(curenv);
 		return;
@@ -163,7 +217,7 @@ trap_dispatch(struct Trapframe *tf)
 void
 trap(struct Trapframe *tf)
 {
-	//struct Trapframe *tf = &tf_;
+    //struct Trapframe *tf = &tf_;
 	// The environment may have set DF and some versions
 	// of GCC rely on DF being clear
 	asm volatile("cld" ::: "cc");
@@ -209,9 +263,14 @@ page_fault_handler(struct Trapframe *tf)
 	fault_va = rcr2();
 
 	// Handle kernel-mode page faults.
-
 	// LAB 3: Your code here.
+	
 
+	if((tf->tf_cs & 3) != 3)
+
+		panic("page fault is  in kernel mode");
+	
+	
 	// We've already handled kernel-mode exceptions, so if we get here,
 	// the page fault happened in user mode.
 
@@ -221,4 +280,3 @@ page_fault_handler(struct Trapframe *tf)
 	print_trapframe(tf);
 	env_destroy(curenv);
 }
-
