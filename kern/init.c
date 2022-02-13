@@ -11,11 +11,16 @@
 #include <kern/dwarf_api.h>
 #include <kern/pmap.h>
 #include <kern/kclock.h>
+
+#include <kern/env.h>
+#include <kern/trap.h>
+
  
 
 #include <kern/env.h>
 #include <kern/trap.h>
  
+
 
 uint64_t end_debug;
 
@@ -51,10 +56,7 @@ i386_init(void)
 	trap_init();
 
 
- 
-	// Drop into the kernel monitor.
-	while (1)
-		monitor(NULL);
+
 
 
 
@@ -70,6 +72,9 @@ i386_init(void)
 	// We only have one user environment for now, so just run it.
 	env_run(&envs[0]);
 
+
+	// Drop into the kernel monitor.
+	
 }
 
 
