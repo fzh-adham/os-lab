@@ -49,6 +49,7 @@
    Find the PUSHA,POPA macros in kern/macro.h. Since amd64 doesn't support
    pusha,popa so you will find these macros handy.
  */
+
 	TRAPHANDLER_NOEC(DIVIDE,0)
 	TRAPHANDLER_NOEC(DEBUG,1)
 	TRAPHANDLER_NOEC(NMI,2)
@@ -78,6 +79,7 @@
  * Hint: Be sure to review the x64 calling convention from lab1
  *       for how to pass a pointer to the trapframe.
  */
+
 
 _alltraps:	
 		sub $8, %rsp
