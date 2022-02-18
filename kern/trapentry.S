@@ -6,6 +6,9 @@
 #include <kern/macro.h>
 
 
+#include <kern/picirq.h>
+
+
 
 ###################################################################
 # exceptions/interrupts
@@ -50,6 +53,7 @@
    pusha,popa so you will find these macros handy.
  */
 
+
 	TRAPHANDLER_NOEC(DIVIDE,0)
 	TRAPHANDLER_NOEC(DEBUG,1)
 	TRAPHANDLER_NOEC(NMI,2)
@@ -73,12 +77,14 @@
 
 	TRAPHANDLER_NOEC(SYSCALL,48)
 
+
 /*
  * Lab 3: Your code here for _alltraps
  *
  * Hint: Be sure to review the x64 calling convention from lab1
  *       for how to pass a pointer to the trapframe.
  */
+
 
 
 _alltraps:	
@@ -102,3 +108,4 @@ _alltraps:
 		movw (%rsp), %ds
 		add $8, %rsp
 		iret
+

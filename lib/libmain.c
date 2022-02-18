@@ -15,8 +15,10 @@ libmain(int argc, char **argv)
 	// LAB 3: Your code here.
 
 
+
 	thisenv = 0;
 	thisenv = envs+ENVX(sys_getenvid());		
+
 
 
 
