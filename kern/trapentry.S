@@ -5,7 +5,9 @@
 #include <inc/trap.h>
 #include <kern/macro.h>
 
+
 #include <kern/picirq.h>
+
 
 
 ###################################################################
@@ -52,6 +54,29 @@
  */
 
 
+	TRAPHANDLER_NOEC(DIVIDE,0)
+	TRAPHANDLER_NOEC(DEBUG,1)
+	TRAPHANDLER_NOEC(NMI,2)
+	TRAPHANDLER_NOEC(BRKPT,3)
+	TRAPHANDLER_NOEC(OFLOW,4)
+	TRAPHANDLER_NOEC(BOUND,5)
+	TRAPHANDLER_NOEC(ILLOP,6)
+	TRAPHANDLER_NOEC(DEVICE,7)
+	TRAPHANDLER(DBLFLT,8)
+	TRAPHANDLER_NOEC(RESERVED,9)
+	TRAPHANDLER(TSS,10)
+	TRAPHANDLER(SEGNP,11)
+	TRAPHANDLER(STACK,12)
+	TRAPHANDLER(GPFLT,13)
+	TRAPHANDLER(PGFLT,14)
+	TRAPHANDLER_NOEC(RES,15)
+	TRAPHANDLER_NOEC(FPERR,16)
+	TRAPHANDLER_NOEC(ALIGN,17)
+	TRAPHANDLER_NOEC(MCHK,18)
+	TRAPHANDLER_NOEC(SIMDERR,19)
+
+	TRAPHANDLER_NOEC(SYSCALL,48)
+
 
 /*
  * Lab 3: Your code here for _alltraps
@@ -59,4 +84,28 @@
  * Hint: Be sure to review the x64 calling convention from lab1
  *       for how to pass a pointer to the trapframe.
  */
+
+
+
+_alltraps:	
+		sub $8, %rsp
+		movw %ds, (%rsp)
+		sub $8, %rsp
+		movw %es, (%rsp)
+
+		PUSHA
+	
+		movw $GD_KD, %rax
+		movw %rax, %ds
+		movw %rax, %es
+		movq %rsp, %rdi		
+	
+		call trap
+
+		POPA_
+		movw (%rsp), %es
+		add $8, %rsp	
+		movw (%rsp), %ds
+		add $8, %rsp
+		iret
 
