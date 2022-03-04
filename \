@@ -1,0 +1,5 @@
+git checkout -b lab5 main
+cp -r ~/jos-private/lab5/* ./
+git add --all
+git commit -m "lab5 start code"
+git push -u origin lab5
