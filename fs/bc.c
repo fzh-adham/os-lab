@@ -48,13 +48,30 @@ bc_pgfault(struct UTrapframe *utf)
 	// Hint: first round addr to page boundary.
 	//
 	// LAB 5: your code here:
+	addr = ROUNDDOWN(addr, PGSIZE);
+    r = sys_page_alloc(0, (void*)addr, PTE_SYSCALL);
+	if (r) {
+		panic("bc_pgfault: could not allocate a page");
+	}
+
+    r = ide_read((uint32_t) (blockno * BLKSECTS), (void*)addr, BLKSECTS);
+	if (r) {
+		panic("bc_pgfault: could not read block");		
+	}
+
+	if ((r = sys_page_map(0, addr, 0, addr, uvpt[PGNUM(addr)] & PTE_SYSCALL)) < 0)
+		panic("in bc_pgfault, sys_page_map: %e", r);
+
 
 
 
 	// LAB 5: Your code here
 
+if (bitmap && block_is_free(blockno))
+		panic("reading free block %08x\n", blockno);
+}
 
-	if ((r = sys_page_map(0, addr, 0, addr, uvpt[PGNUM(addr)] & PTE_SYSCALL)) < 0)
+	/*if ((r = sys_page_map(0, addr, 0, addr, uvpt[PGNUM(addr)] & PTE_SYSCALL)) < 0)
 		panic("in bc_pgfault, sys_page_map: %e", r);
 
 	// Check that the block we read was allocated. (exercise for
@@ -62,7 +79,7 @@ bc_pgfault(struct UTrapframe *utf)
 	// in?)
 	if (bitmap && block_is_free(blockno))
 		panic("reading free block %08x\n", blockno);
-}
+}*/
 
 // Flush the contents of the block containing VA out to disk if
 // necessary, then clear the PTE_D bit using sys_page_map.
@@ -75,12 +92,22 @@ void
 flush_block(void *addr)
 {
 	uint64_t blockno = ((uint64_t)addr - DISKMAP) / BLKSIZE;
+    int r;
 
 	if (addr < (void*)DISKMAP || addr >= (void*)(DISKMAP + DISKSIZE))
 		panic("flush_block of bad va %08x", addr);
 
-	// LAB 5: Your code here.
-	panic("flush_block not implemented");
+    if (!va_is_mapped(addr) || !va_is_dirty(addr)) {
+        return;
+    }
+    addr = ROUNDDOWN(addr, PGSIZE);
+
+    if(ide_write((uint32_t) (blockno * BLKSECTS), (void*)addr, BLKSECTS)) {
+        panic("flush_block: could not write to disk");	
+    }
+
+	if ((r = sys_page_map(0, addr, 0, addr, uvpt[PGNUM(addr)] & PTE_SYSCALL)) < 0)
+		panic("in bc_pgfault, sys_page_map: %e", r);
 }
 
 // Test that the block cache works, by smashing the superblock and

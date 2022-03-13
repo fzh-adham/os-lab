@@ -25,7 +25,8 @@ pgfault(struct UTrapframe *utf)
 	//   (see <inc/memlayout.h>).
 
 	// LAB 4: Your code here.
-
+	if(!(err &FEC_WR)&&(uvpt[PPN(addr)]& PTE_COW))
+		panic("page fault!!! page is not writeable\n");
 	// Allocate a new page, map it at a temporary location (PFTEMP),
 	// copy the data from the old page to the new page, then move the new
 	// page to the old page's address.
@@ -35,8 +36,25 @@ pgfault(struct UTrapframe *utf)
 
 	// LAB 4: Your code here.
 
-	panic("pgfault not implemented");
+	//panic("pgfault not implemented");
+
+
+	void *Pageaddr ;
+	if(0 == sys_page_alloc(0,(void*)PFTEMP,PTE_U|PTE_P|PTE_W))
+	{
+		Pageaddr = ROUNDDOWN(addr,PGSIZE);
+		memmove(PFTEMP, Pageaddr, PGSIZE);
+		if(0> sys_page_map(0,PFTEMP,0,Pageaddr,PTE_U|PTE_P|PTE_W))
+				panic("Page map at temp address failed");
+		if(0> sys_page_unmap(0,PFTEMP))
+				panic("Page unmap from temp location failed");
+	}
+	else
+	{
+		panic("Page assigning failed when handle page fault");
+	}
 }
+
 
 //
 // Map our virtual page pn (address pn*PGSIZE) into the target envid
@@ -52,11 +70,48 @@ pgfault(struct UTrapframe *utf)
 static int
 duppage(envid_t envid, unsigned pn)
 {
-	int r;
+	int err;
+    int perm;
+    pte_t pte;
+    void *va;
 
-	// LAB 4: Your code here.
-	panic("duppage not implemented");
+    pte = uvpt[pn];
+    va = (void *) ((uintptr_t) pn * PGSIZE);
+
+    perm = pte & PTE_SYSCALL;
+
+	if (perm & PTE_SHARE) {
+        err = sys_page_map(0, va, envid, va, perm);
+		if (err < 0) { 
+			panic("duppage: Failed on PTE_SHARE.\n");
+        }
+        return 0;
+    }
+
+    if (perm & PTE_COW || perm & PTE_W) {
+        perm &= ~PTE_W;
+        perm |= PTE_COW;
+
+        err = sys_page_map(0, va, envid, va, perm);
+        if (err < 0) {
+            panic("page_map: page map failed, %e", err);
+        }
+
+        err = sys_page_map(0, va, 0, va, perm);
+        if (err < 0) {
+            panic("page_map: page map failed, %e", err);
+        }
+
+        return 0;
+    }
+
+    err = sys_page_map(0, va, envid, va, perm);
+    if (err < 0) {
+        panic("page_map: page map failed, %e", err);
+    }
+
 	return 0;
+	
 }
 
 //
@@ -79,7 +134,58 @@ envid_t
 fork(void)
 {
 	// LAB 4: Your code here.
-	panic("fork not implemented");
+	//panic("fork not implemented");
+
+	envid_t envid;
+	int r;
+
+	uint64_t i;
+	uint64_t addr, last;
+
+	set_pgfault_handler(pgfault);
+	envid = sys_exofork();
+
+
+	if(envid < 0)
+		panic("\nsys_exofork error: %e\n", envid);
+    else if(envid == 0){
+		thisenv = &envs[ENVX(sys_getenvid())];
+		return 0;
+	}
+
+	uint64_t ad = 0;
+	for (addr = (uint64_t)USTACKTOP-PGSIZE; addr >=(uint64_t)UTEXT; addr -= PGSIZE){
+		if(uvpml4e[VPML4E(addr)]& PTE_P){
+			if( uvpde[VPDPE(addr)] & PTE_P){
+				if( uvpd[VPD(addr)] & PTE_P){
+					if((ad =uvpt[VPN(addr)])& PTE_P){
+						duppage(envid, VPN(addr));
+						}
+					}else{
+						addr -= NPDENTRIES*PGSIZE;
+				}
+			}else{
+				addr -= NPDENTRIES*NPDENTRIES*PGSIZE;
+			}
+
+		}else{
+			addr -= ((VPML4E(addr)+1)<<PML4SHIFT);
+		}
+
+	}
+
+
+	sys_page_alloc(envid, (void *)(UXSTACKTOP - PGSIZE),PTE_P|PTE_U|PTE_W);
+	sys_page_alloc(envid, (void*)(USTACKTOP - PGSIZE),PTE_P|PTE_U|PTE_W);
+	sys_page_map(envid, (void*)(USTACKTOP - PGSIZE), 0, PFTEMP,PTE_P|PTE_U|PTE_W);
+
+	memmove(PFTEMP, (void*)(USTACKTOP-PGSIZE), PGSIZE);
+
+	sys_page_unmap(0, PFTEMP);
+  sys_env_set_pgfault_upcall(envid, thisenv->env_pgfault_upcall);
+	sys_env_set_status(envid, ENV_RUNNABLE);
+
+	return envid;
 }
 
 // Challenge!
