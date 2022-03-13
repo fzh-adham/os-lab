@@ -206,11 +206,6 @@ serve_read(envid_t envid, union Fsipc *ipc)
 {
 	struct Fsreq_read *req = &ipc->read;
 	struct Fsret_read *ret = &ipc->readRet;
-	
-	//5
-	struct OpenFile *o;
-    size_t size;
-	int r;
 
 	if (debug)
 		cprintf("serve_read %08x %08x %08x\n", envid, req->req_fileid, req->req_n);
@@ -222,20 +217,19 @@ serve_read(envid_t envid, union Fsipc *ipc)
 	// so filling in ret will overwrite req.
 	//
 	// LAB 5: Your code here
-	//panic("serve_read not implemented");
 
-	if ((r = openfile_lookup(envid, req->req_fileid, &o)) < 0) {
+	struct OpenFile *o;
+	int r;
+	if ((r = openfile_lookup(envid, req->req_fileid, &o)) < 0)
 		return r;
-    }
-	size = (req->req_n < PGSIZE) ? req->req_n : PGSIZE;
-	size = file_read(o->o_file, ret->ret_buf, size, o->o_fd->fd_offset);
 
-    if (size < 0) {
-		return size;
-    }
+	int req_n = req->req_n > PGSIZE ? PGSIZE : req->req_n;
+	if ((r = file_read(o->o_file, ret->ret_buf, req_n, o->o_fd->fd_offset)) < 0)
+		return r;
+	o->o_fd->fd_offset += r;
+	return r;
 
-	o->o_fd->fd_offset += size;
-	return size;
+	//panic("serve_read not implemented");
 }
 
 
@@ -246,27 +240,23 @@ serve_read(envid_t envid, union Fsipc *ipc)
 int
 serve_write(envid_t envid, struct Fsreq_write *req)
 {
-	// LAB 5: Your code here.
-	//panic("serve_write not implemented");pp
-	struct OpenFile *o;
-    size_t size;
-	int r;
-
 	if (debug)
 		cprintf("serve_write %08x %08x %08x\n", envid, req->req_fileid, req->req_n);
 
-	if ((r = openfile_lookup(envid, req->req_fileid, &o)) < 0) {
+	// LAB 5: Your code here.
+
+	struct OpenFile *o;
+	int r;
+	if ((r = openfile_lookup(envid, req->req_fileid, &o)) < 0)
 		return r;
-    }
-	
 
-	size = file_write(o->o_file, req->req_buf, req->req_n, o->o_fd->fd_offset);
-    if (size < 0) {
-		return size;
-    }
+	int req_n = req->req_n > PGSIZE ? PGSIZE : req->req_n;
+	if ((r = file_write(o->o_file, req->req_buf, req_n, o->o_fd->fd_offset)) < 0)
+		return r;
+	o->o_fd->fd_offset += r;
+	return r;
 
-	o->o_fd->fd_offset += size;
-	return size;
+	// panic("serve_write not implemented");
 }
 
 // Stat ipc->stat.req_fileid.  Return the file's struct Stat to the
@@ -405,4 +395,5 @@ umain(int argc, char **argv)
 	fs_test();
 	serve();
 }
+
 

@@ -25,8 +25,10 @@ pgfault(struct UTrapframe *utf)
 	//   (see <inc/memlayout.h>).
 
 	// LAB 4: Your code here.
+
 	if(!(err &FEC_WR)&&(uvpt[PPN(addr)]& PTE_COW))
 		panic("page fault!!! page is not writeable\n");
+
 	// Allocate a new page, map it at a temporary location (PFTEMP),
 	// copy the data from the old page to the new page, then move the new
 	// page to the old page's address.
@@ -35,9 +37,6 @@ pgfault(struct UTrapframe *utf)
 	//   No need to explicitly delete the old page's mapping.
 
 	// LAB 4: Your code here.
-
-	//panic("pgfault not implemented");
-
 
 	void *Pageaddr ;
 	if(0 == sys_page_alloc(0,(void*)PFTEMP,PTE_U|PTE_P|PTE_W))
@@ -53,8 +52,9 @@ pgfault(struct UTrapframe *utf)
 	{
 		panic("Page assigning failed when handle page fault");
 	}
-}
 
+	//panic("pgfault not implemented");
+}
 
 //
 // Map our virtual page pn (address pn*PGSIZE) into the target envid
@@ -70,49 +70,38 @@ pgfault(struct UTrapframe *utf)
 static int
 duppage(envid_t envid, unsigned pn)
 {
-	int err;
-    int perm;
-    pte_t pte;
-    void *va;
+int r;
 
-    pte = uvpt[pn];
-    va = (void *) ((uintptr_t) pn * PGSIZE);
+	// LAB 4: Your code here.
 
-    perm = pte & PTE_SYSCALL;
+	int perm = (uvpt[pn]) & PTE_SYSCALL;
+	void* addr = (void*)((uint64_t)pn *PGSIZE);
 
-	if (perm & PTE_SHARE) {
-        err = sys_page_map(0, va, envid, va, perm);
-		if (err < 0) { 
-			panic("duppage: Failed on PTE_SHARE.\n");
-        }
-        return 0;
-    }
+	if(perm & PTE_SHARE){
+			if(0 < sys_page_map(0,addr,envid,addr,perm))
+				panic("Page alloc with COW  failed.\n");
 
-    if (perm & PTE_COW || perm & PTE_W) {
-        perm &= ~PTE_W;
-        perm |= PTE_COW;
+		}else{
+					if((perm & PTE_W || perm & PTE_COW)){
 
-        err = sys_page_map(0, va, envid, va, perm);
-        if (err < 0) {
-            panic("page_map: page map failed, %e", err);
-        }
+						perm = (perm|PTE_COW)&(~PTE_W);
 
-        err = sys_page_map(0, va, 0, va, perm);
-        if (err < 0) {
-            panic("page_map: page map failed, %e", err);
-        }
+						if(0 < sys_page_map(0,addr,envid,addr,perm))
+							panic("Page alloc with COW  failed.\n");
 
-        return 0;
-    }
+						if(0 <  sys_page_map(0,addr,0,addr,perm))
+							panic("Page alloc with COW  failed.\n");
 
-    err = sys_page_map(0, va, envid, va, perm);
-    if (err < 0) {
-        panic("page_map: page map failed, %e", err);
-    }
+					}else{
+						if(0 < sys_page_map(0,addr,envid,addr,perm))
+							panic("Page alloc with COW  failed.\n");
+					}
+		}
 
+	//panic("duppage not implemented");
 	return 0;
-	
 }
+
 
 //
 // User-level fork with copy-on-write.
@@ -134,7 +123,6 @@ envid_t
 fork(void)
 {
 	// LAB 4: Your code here.
-	//panic("fork not implemented");
 
 	envid_t envid;
 	int r;
@@ -186,6 +174,8 @@ fork(void)
 	sys_env_set_status(envid, ENV_RUNNABLE);
 
 	return envid;
+
+	//panic("fork not implemented");
 }
 
 // Challenge!
@@ -195,3 +185,4 @@ sfork(void)
 	panic("sfork not implemented");
 	return -E_INVAL;
 }
+

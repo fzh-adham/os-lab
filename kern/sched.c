@@ -30,8 +30,6 @@ sched_yield(void)
 	// below to halt the cpu.
 
 	// LAB 4: Your code here.
-	// sched_halt never returns
-
 	int i, index = 0;
 	if (curenv)
 		index = ENVX(curenv->env_id);
@@ -45,7 +43,8 @@ sched_yield(void)
 	if(curenv && curenv->env_status == ENV_RUNNING) {
 		env_run(curenv);
 	}
-	
+
+	// sched_halt never returns
 	sched_halt();
 }
 
@@ -95,4 +94,5 @@ sched_halt(void)
 		"hlt\n"
 		: : "a" (thiscpu->cpu_ts.ts_esp0));
 }
+
 

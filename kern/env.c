@@ -123,6 +123,7 @@ env_init(void)
 {
 	// Set up envs array
 	// LAB 3: Your code here.
+
 	env_free_list = &envs[0];
 	struct Env *last = NULL;
 	int i;
@@ -207,7 +208,6 @@ env_setup_vm(struct Env *e)
 	e->env_cr3 = page2pa(p);
 	p->pp_ref++;
 	e->env_pml4e[1] = boot_pml4e[1];
-
 	// UVPT maps the env's own page table read-only.
 	// Permissions: kernel R, user R
 	e->env_pml4e[PML4(UVPT)] = e->env_cr3 | PTE_P | PTE_U;
@@ -274,6 +274,7 @@ env_alloc(struct Env **newenv_store, envid_t parent_id)
 	// Enable interrupts while in user mode.
 	// LAB 4: Your code here.
 	e->env_tf.tf_eflags |= FL_IF;
+
 	// Clear the page fault handler until user installs one.
 	e->env_pgfault_upcall = 0;
 
@@ -299,7 +300,6 @@ static void
 region_alloc(struct Env *e, void *va, size_t len)
 {
 	// LAB 3: Your code here.
-	
 	void *start = ROUNDDOWN(va, PGSIZE);
   void *end = ROUNDUP(va + len, PGSIZE);
   for(; start < end; start += PGSIZE) {
@@ -314,7 +314,6 @@ region_alloc(struct Env *e, void *va, size_t len)
           panic("region_alloc: page allocation failed!! \n");
       }
   }
-
 	// (But only if you need it for load_icode.)
 	//
 	// Hint: It is easier to use region_alloc if the caller can pass
@@ -383,7 +382,8 @@ load_icode(struct Env *e, uint8_t *binary)
 	// LAB 3: Your code here.
 	e->elf = binary;
 
-	struct Proghdr *program_header, *end_program_header;
+
+  struct Proghdr *program_header, *end_program_header;
   struct Elf *elf = (struct Elf *) binary;
 
   program_header = (struct Proghdr *) (binary + elf->e_phoff);
@@ -416,33 +416,18 @@ void
 env_create(uint8_t *binary, enum EnvType type)
 {
 	// LAB 3: Your code here.
-	/*struct Env *env;
+	struct Env *env;
 	int ret = env_alloc(&env, 0);
 	if (ret < 0) {
 			panic("env_alloc: %e", ret);
 	}
 	load_icode(env, binary);
-	env->env_type = type;*/
+	env->env_type = type;
 
 	// If this is the file server (type == ENV_TYPE_FS) give it I/O privileges.
 	// LAB 5: Your code here.
-
-	struct Env *env;
-    int err;
-    
-    err = env_alloc(&env, 0);
-    if (err < 0) {
-        panic("env_create: Could not allocate en %e", err);
-    }
-
-	load_icode(env, binary);
-    env->env_type = type;
-
-	
-
-	if(type == ENV_TYPE_FS) {
-		env->env_tf.tf_eflags |= FL_IOPL_MASK;
-	}
+	if(type == ENV_TYPE_FS)
+		env->env_tf.tf_eflags |= FL_IOPL_3;
 }
 
 //
@@ -592,7 +577,11 @@ env_run(struct Env *e)
 	//	e->env_tf to sensible values.
 
 	// LAB 3: Your code here.
-	if (curenv && curenv->env_status == ENV_RUNNING)
+
+	//f (e != curenv && e->env_status != ENV_RUNNABLE)
+			//panic("the env could not run");
+
+  if (curenv && curenv->env_status == ENV_RUNNING)
       curenv->env_status = ENV_RUNNABLE;
 
   curenv = e;
@@ -603,7 +592,6 @@ env_run(struct Env *e)
 
   lcr3(curenv->env_cr3);
   env_pop_tf(&(curenv->env_tf));
-
 
 	//panic("env_run not yet implemented");
 }

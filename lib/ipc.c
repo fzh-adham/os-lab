@@ -23,9 +23,6 @@ int32_t
 ipc_recv(envid_t *from_env_store, void *pg, int *perm_store)
 {
 	// LAB 4: Your code here.
-
-	//panic("ipc_recv not implemented");
-
 	int r;
 
     if (pg == NULL) {
@@ -48,7 +45,9 @@ ipc_recv(envid_t *from_env_store, void *pg, int *perm_store)
     }
     return thisenv->env_ipc_value;
 
-	
+
+	//panic("ipc_recv not implemented");
+	//return 0;
 }
 
 // Send 'val' (and 'pg' with 'perm', if 'pg' is nonnull) to 'toenv'.
@@ -63,8 +62,6 @@ void
 ipc_send(envid_t to_env, uint32_t val, void *pg, int perm)
 {
 	// LAB 4: Your code here.
-	//panic("ipc_send not implemented");
-
 	int r;
 
     if (pg == NULL) {
@@ -77,6 +74,7 @@ ipc_send(envid_t to_env, uint32_t val, void *pg, int perm)
         }
         sys_yield();
     } while(r != 0);
+	//panic("ipc_send not implemented");
 }
 
 
@@ -93,3 +91,4 @@ ipc_find_env(enum EnvType type)
 	}
 	return 0;
 }
+

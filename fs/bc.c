@@ -1,4 +1,3 @@
-
 #include "fs.h"
 
 // Return the virtual address of this disk block.
@@ -48,30 +47,21 @@ bc_pgfault(struct UTrapframe *utf)
 	// Hint: first round addr to page boundary.
 	//
 	// LAB 5: your code here:
-	addr = ROUNDDOWN(addr, PGSIZE);
-    r = sys_page_alloc(0, (void*)addr, PTE_SYSCALL);
-	if (r) {
-		panic("bc_pgfault: could not allocate a page");
-	}
-
-    r = ide_read((uint32_t) (blockno * BLKSECTS), (void*)addr, BLKSECTS);
-	if (r) {
-		panic("bc_pgfault: could not read block");		
-	}
-
-	if ((r = sys_page_map(0, addr, 0, addr, uvpt[PGNUM(addr)] & PTE_SYSCALL)) < 0)
-		panic("in bc_pgfault, sys_page_map: %e", r);
+	addr = (void *)ROUNDDOWN(addr, PGSIZE);
+	r = sys_page_alloc(0, addr, PTE_U | PTE_W | PTE_P);
+	if (r < 0 )
+		panic("bc_pgfault: sys_page_alloc fail\n");
+	r = ide_read(blockno*BLKSECTS, addr, BLKSECTS);
+	if (r < 0)
+		panic("bc_pgfault: ide_read error\n");
 
 
 
 
 	// LAB 5: Your code here
 
-if (bitmap && block_is_free(blockno))
-		panic("reading free block %08x\n", blockno);
-}
 
-	/*if ((r = sys_page_map(0, addr, 0, addr, uvpt[PGNUM(addr)] & PTE_SYSCALL)) < 0)
+	if ((r = sys_page_map(0, addr, 0, addr, uvpt[PGNUM(addr)] & PTE_SYSCALL)) < 0)
 		panic("in bc_pgfault, sys_page_map: %e", r);
 
 	// Check that the block we read was allocated. (exercise for
@@ -79,7 +69,7 @@ if (bitmap && block_is_free(blockno))
 	// in?)
 	if (bitmap && block_is_free(blockno))
 		panic("reading free block %08x\n", blockno);
-}*/
+}
 
 // Flush the contents of the block containing VA out to disk if
 // necessary, then clear the PTE_D bit using sys_page_map.
@@ -92,22 +82,23 @@ void
 flush_block(void *addr)
 {
 	uint64_t blockno = ((uint64_t)addr - DISKMAP) / BLKSIZE;
-    int r;
 
 	if (addr < (void*)DISKMAP || addr >= (void*)(DISKMAP + DISKSIZE))
 		panic("flush_block of bad va %08x", addr);
 
-    if (!va_is_mapped(addr) || !va_is_dirty(addr)) {
-        return;
-    }
-    addr = ROUNDDOWN(addr, PGSIZE);
+	// LAB 5: Your code here.
 
-    if(ide_write((uint32_t) (blockno * BLKSECTS), (void*)addr, BLKSECTS)) {
-        panic("flush_block: could not write to disk");	
-    }
+	int r;
+	if (!va_is_mapped(addr) || !va_is_dirty(addr))
+		return ;
+	addr = (void *)ROUNDDOWN(addr, PGSIZE);
+	if (ide_write(blockno*BLKSECTS, addr, BLKSECTS) < 0)
+		panic("flush_block: ide_write error\n");
 
 	if ((r = sys_page_map(0, addr, 0, addr, uvpt[PGNUM(addr)] & PTE_SYSCALL)) < 0)
 		panic("in bc_pgfault, sys_page_map: %e", r);
+
+	//panic("flush_block not implemented");
 }
 
 // Test that the block cache works, by smashing the superblock and
@@ -150,4 +141,5 @@ bc_init(void)
 	// cache the super block by reading it once
 	memmove(&super, diskaddr(1), sizeof super);
 }
+
 

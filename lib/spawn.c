@@ -300,35 +300,31 @@ map_segment(envid_t child, uintptr_t va, size_t memsz,
 static int
 copy_shared_pages(envid_t child)
 {
-	// LAB 5: Your code here.
-
-	int perm;
+	/*// LAB 5: Your code here.
+    int pte;
+    int i;
+    int j;
+    int perm;
     int r;
     int pml4;
     int pdpe;
     int pde;
-    int pte;
-    int i;
-    int j;
     uint64_t k;
     void *addr;
 
     for(pml4 = 0; pml4 < VPML4E(UTOP); pml4++) {
 		if(!(uvpml4e[pml4] & PTE_P)) {
             continue;
-
         }
         for (pdpe = 0; pdpe < NPDPENTRIES; pdpe++) {
             i = pml4 * NPDPENTRIES + pdpe;
             if(!(uvpde[i] & PTE_P)) {
                 continue;
-
             }
             for (pde = 0; pde < NPDENTRIES; pde++) {
                 j = i * NPDENTRIES + pde;
                 if(!(uvpd[j] & PTE_P)) {
                     continue;
-
                 }
                 for (pte = 0; pte < NPTENTRIES; pte++) {
                     k = j * NPTENTRIES + pte;
@@ -344,6 +340,34 @@ copy_shared_pages(envid_t child)
         }
     }
 
-	return 0;
-}
+	return 0;*/
+int r = 0; 
+ uint64_t pml;
+
+  uint64_t pdpe; 
+ uint64_t pde; 
+uint64_t pte; 
+uint64_t each_pde = 0;
+ uint64_t each_pte = 0;
+ uint64_t each_pdpe = 0;
+
+ for(pml = 0; pml < VPML4E(UTOP); pml++) 
+{ if(uvpml4e[pml] & PTE_P) 
+{ for(pdpe = 0; pdpe < NPDPENTRIES; pdpe++, each_pdpe++)
+ { if(uvpde[each_pdpe] & PTE_P)
+ { for(pde= 0; pde < NPDENTRIES; pde++, each_pde++)
+ { if(uvpd[each_pde] & PTE_P)
+ { for(pte = 0; pte < NPTENTRIES; pte++, each_pte++)
+ { if(uvpt[each_pte] & PTE_SHARE) 
+{               int perm = uvpt[each_pte] & PTE_SYSCALL;  
+        void* addr = (void*) (each_pte * PGSIZE);         
+ r = sys_page_map(0, addr, child, addr, perm);
+ if (r < 0)   panic("\n couldn't call fork %e\n", r); } } }   
+  else { each_pte = (each_pde+1)*NPTENTRIES; } } } else 
+{ each_pde = (each_pdpe+1)* NPDENTRIES; } } } else 
+{ each_pdpe = (pml+1) *NPDPENTRIES;   }  }
+  return 0;
+ }
+
+
 
